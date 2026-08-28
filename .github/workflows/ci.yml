@@ -25,7 +25,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        dir: [avito-kuhnya/core, avito-kuhnya/restaurant-service]
+        dir: [core, restaurant-service]
     steps:
       - uses: actions/checkout@v4
 

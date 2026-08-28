@@ -1,0 +1,21 @@
+@startuml
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
+
+Person(customer, "Клиент")
+Person(venueStaff, "Сотрудник заведения")
+
+System_Boundary(kuhnyaBoundary, "Авито.Кухня") {
+  Container(coreApi, "Core API", "Go, chi", "Client API + Venue API, бизнес-логика заказов")
+  ContainerDb(coreDb, "PostgreSQL (core)", "PostgreSQL 16", "venues, menu_items, orders, order_items, order_status_history")
+}
+
+System_Boundary(restaurantBoundary, "Restaurant Service (пример заведения)") {
+  Container(restaurantApp, "Restaurant Service", "Go", "Poll/webhook получения заказов, эмуляция кухни")
+}
+
+Rel(customer, coreApi, "Client API", "HTTPS/REST, JSON")
+Rel(venueStaff, restaurantApp, "Мониторит заказы (в реальности — своя UI)")
+Rel(coreApi, coreDb, "SQL", "pgx")
+Rel(restaurantApp, coreApi, "Venue API: accept/reject/status", "HTTPS/REST, X-API-Key")
+Rel(coreApi, restaurantApp, "Webhook: новый заказ", "HTTPS/REST")
+@enduml

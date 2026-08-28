@@ -1,0 +1,179 @@
+openapi: 3.0.3
+info:
+  title: Avito.Kuhnya — Venue API
+  version: "1.0.0"
+  description: >
+    API для заведений. Авторизация — статический API-key в заголовке X-API-Key
+    (упрощение для MVP, см. README раздел "Допущения").
+servers:
+  - url: /api/v1/venue
+
+security:
+  - ApiKeyAuth: []
+
+paths:
+  /menu-items:
+    post:
+      operationId: createMenuItem
+      summary: Добавить позицию в меню
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CreateMenuItemRequest" }
+      responses:
+        "201":
+          description: Создано
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id: { type: string, format: uuid, x-go-type: string }
+
+  /menu-items/{itemId}/availability:
+    patch:
+      operationId: setMenuItemAvailability
+      summary: Изменить наличие позиции
+      parameters:
+        - name: itemId
+          in: path
+          required: true
+          schema: { type: string, format: uuid, x-go-type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AvailabilityRequest" }
+      responses:
+        "204": { description: Обновлено }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /orders:
+    get:
+      operationId: listVenueOrders
+      summary: Список заказов заведения (poll-режим получения новых заказов)
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [CREATED, ACCEPTED, COOKING, READY, DELIVERING, COMPLETED, CANCELLED]
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Order" }
+
+  /orders/{orderId}/accept:
+    post:
+      operationId: acceptOrder
+      summary: Принять заказ в работу
+      parameters:
+        - name: orderId
+          in: path
+          required: true
+          schema: { type: string, format: uuid, x-go-type: string }
+      responses:
+        "204": { description: Принят }
+        "400": { $ref: "#/components/responses/BadRequest" }
+
+  /orders/{orderId}/reject:
+    post:
+      operationId: rejectOrder
+      summary: Отклонить заказ
+      parameters:
+        - name: orderId
+          in: path
+          required: true
+          schema: { type: string, format: uuid, x-go-type: string }
+      requestBody:
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/RejectOrderRequest" }
+      responses:
+        "204": { description: Отклонён }
+
+  /orders/{orderId}/status:
+    patch:
+      operationId: updateOrderStatus
+      summary: Обновить статус заказа (COOKING/READY/DELIVERING/COMPLETED)
+      parameters:
+        - name: orderId
+          in: path
+          required: true
+          schema: { type: string, format: uuid, x-go-type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/UpdateOrderStatusRequest" }
+      responses:
+        "204": { description: Обновлено }
+        "400": { $ref: "#/components/responses/BadRequest" }
+
+components:
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+
+  responses:
+    NotFound:
+      description: Не найдено
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    BadRequest:
+      description: Некорректный запрос / недопустимый переход статуса
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+
+  schemas:
+    Error:
+      type: object
+      properties:
+        error: { type: string }
+
+    CreateMenuItemRequest:
+      type: object
+      required: [name, priceKopecks]
+      properties:
+        categoryId: { type: string, format: uuid, x-go-type: string }
+        name: { type: string }
+        description: { type: string }
+        priceKopecks: { type: integer, format: int64 }
+        currency: { type: string, default: RUB }
+
+    AvailabilityRequest:
+      type: object
+      properties:
+        isAvailable: { type: boolean }
+
+    RejectOrderRequest:
+      type: object
+      properties:
+        reason: { type: string }
+
+    UpdateOrderStatusRequest:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [COOKING, READY, DELIVERING, COMPLETED]
+
+    Order:
+      type: object
+      properties:
+        id: { type: string, format: uuid, x-go-type: string }
+        venueId: { type: string, format: uuid, x-go-type: string }
+        status: { type: string }
+        totalKopecks: { type: integer, format: int64 }
+        currency: { type: string }
+        customerRef: { type: string }
+        createdAt: { type: string, format: date-time }

@@ -1,0 +1,22 @@
+@startuml
+title CJM: Заведение обрабатывает заказ
+start
+:Заведение аутентифицируется (X-API-Key);
+:Ведёт меню (POST/PATCH /venue/menu-items);
+fork
+  :Poll: GET /venue/orders?status=CREATED;
+fork again
+  :Push: получить webhook о новом заказе;
+end fork
+:Новый заказ обнаружен;
+if (Есть возможность приготовить?) then (да)
+  :Принять заказ (POST /orders/{id}/accept) -> ACCEPTED;
+  :Готовка (PATCH .../status COOKING) -> COOKING;
+  :Готово (PATCH .../status READY) -> READY;
+  :Передать в доставку -> DELIVERING;
+  :Доставлено -> COMPLETED;
+else (нет)
+  :Отклонить (POST /orders/{id}/reject + reason) -> CANCELLED;
+endif
+stop
+@enduml

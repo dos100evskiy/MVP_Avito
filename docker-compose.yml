@@ -1,0 +1,61 @@
+services:
+  postgres-core:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: avito_kuhnya
+      POSTGRES_USER: avito
+      POSTGRES_PASSWORD: avito
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata_core:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U avito -d avito_kuhnya"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  core-migrate:
+    image: migrate/migrate:v4.17.1
+    volumes:
+      - ./core/migrations:/migrations
+    depends_on:
+      postgres-core:
+        condition: service_healthy
+    command:
+      [
+        "-path", "/migrations",
+        "-database", "postgres://avito:avito@postgres-core:5432/avito_kuhnya?sslmode=disable",
+        "up"
+      ]
+    restart: "no"
+
+  core:
+    build:
+      context: ./core
+    environment:
+      HTTP_PORT: 8080
+      DATABASE_URL: postgres://avito:avito@postgres-core:5432/avito_kuhnya?sslmode=disable
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres-core:
+        condition: service_healthy
+      core-migrate:
+        condition: service_completed_successfully
+
+  restaurant-service:
+    build:
+      context: ./restaurant-service
+    environment:
+      HTTP_PORT: 8090
+      CORE_API_URL: http://core:8080/api/v1/venue
+      CORE_API_KEY: dev-venue-key
+      POLL_ENABLED: "true"
+    ports:
+      - "8090:8090"
+    depends_on:
+      - core
+
+volumes:
+  pgdata_core:

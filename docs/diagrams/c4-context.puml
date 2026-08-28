@@ -1,0 +1,14 @@
+@startuml
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Context.puml
+
+Person(customer, "Клиент", "Пользователь веб-версии Авито.Кухня")
+Person(venueStaff, "Сотрудник заведения", "Управляет меню и заказами")
+
+System(kuhnya, "Авито.Кухня", "Платформа заказа еды из подключённых заведений")
+System_Ext(restaurant, "Сервис заведения", "Пример интеграции: принимает и готовит заказы")
+
+Rel(customer, kuhnya, "Смотрит меню, оформляет заказ", "HTTPS/REST")
+Rel(venueStaff, restaurant, "Использует как back-office заведения")
+Rel(restaurant, kuhnya, "Получает и обновляет заказы", "Venue API / webhook")
+Rel(kuhnya, restaurant, "Нотифицирует о новом заказе", "Webhook")
+@enduml

@@ -1,0 +1,11 @@
+# Конфиг для oapi-codegen (v2.x, новый формат конфигурации).
+# Генерирует ТОЛЬКО типы (request/response модели) из OpenAPI-спеки —
+# намеренно не генерируем server/client интерфейсы в этом заходе, чтобы не
+# переписывать роутинг разом; см. docs/ai-usage/prompts.md и README про то,
+# почему это первый шаг, а не полная замена ручных хендлеров.
+#
+# Перегенерировать: make generate (см. корневой Makefile).
+package: client
+generate:
+  models: true
+output: core/internal/transport/http/client/types.gen.go

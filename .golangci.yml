@@ -1,0 +1,30 @@
+run:
+  timeout: 3m
+
+linters:
+  disable-all: true
+  enable:
+    - govet
+    - staticcheck
+    - errcheck
+    - revive
+    - gosec
+    - ineffassign
+    - unused
+    - gofmt
+    - goimports
+    - bodyclose
+    - unconvert
+
+linters-settings:
+  gosec:
+    excludes:
+      - G115
+  revive:
+    rules:
+      - name: exported
+        disabled: false
+
+issues:
+  exclude-dirs:
+    - migrations

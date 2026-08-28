@@ -1,0 +1,4 @@
+package: venue
+generate:
+  models: true
+output: core/internal/transport/http/venue/types.gen.go

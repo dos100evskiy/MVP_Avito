@@ -1,0 +1,206 @@
+openapi: 3.0.3
+info:
+  title: Avito.Kuhnya — Client API
+  version: "1.0.0"
+  description: >
+    API для клиентской (веб) части Авито.Кухня. Авторизация пользователей
+    не реализуется по условиям задания — customerRef передаётся клиентом
+    как непрозрачный идентификатор.
+servers:
+  - url: /api/v1/client
+
+paths:
+  /venues:
+    get:
+      operationId: listVenues
+      summary: Список доступных заведений
+      parameters:
+        - name: city
+          in: query
+          schema: { type: string }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Venue" }
+
+  /venues/{venueId}/menu:
+    get:
+      operationId: getVenueMenu
+      summary: Меню заведения
+      parameters:
+        - name: venueId
+          in: path
+          required: true
+          schema: { type: string, format: uuid, x-go-type: string }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/VenueMenu" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /orders:
+    post:
+      operationId: createOrder
+      summary: Оформить заказ
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CreateOrderRequest" }
+      responses:
+        "201":
+          description: Заказ создан
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Order" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "409":
+          description: Часть позиций недоступна
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ItemsUnavailableError" }
+
+  /orders/{orderId}:
+    get:
+      operationId: getOrder
+      summary: Получить заказ и его статус
+      parameters:
+        - name: orderId
+          in: path
+          required: true
+          schema: { type: string, format: uuid, x-go-type: string }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Order" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /orders/{orderId}/cancel:
+    post:
+      operationId: cancelOrder
+      summary: Отменить заказ (доступно пока статус CREATED/ACCEPTED)
+      parameters:
+        - name: orderId
+          in: path
+          required: true
+          schema: { type: string, format: uuid, x-go-type: string }
+      responses:
+        "204": { description: Отменён }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+components:
+  responses:
+    NotFound:
+      description: Не найдено
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    BadRequest:
+      description: Некорректный запрос
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+
+  schemas:
+    Error:
+      type: object
+      properties:
+        error: { type: string }
+
+    ItemsUnavailableError:
+      type: object
+      properties:
+        error: { type: string }
+        details:
+          type: array
+          items:
+            type: object
+            properties:
+              menuItemId: { type: string }
+              reason: { type: string }
+
+    Venue:
+      type: object
+      properties:
+        id: { type: string, format: uuid, x-go-type: string }
+        name: { type: string }
+        city: { type: string }
+
+    Category:
+      type: object
+      properties:
+        id: { type: string, format: uuid, x-go-type: string }
+        name: { type: string }
+
+    MenuItem:
+      type: object
+      properties:
+        id: { type: string, format: uuid, x-go-type: string }
+        categoryId: { type: string, format: uuid, x-go-type: string }
+        name: { type: string }
+        description: { type: string }
+        priceKopecks: { type: integer, format: int64 }
+        currency: { type: string }
+        isAvailable: { type: boolean }
+
+    VenueMenu:
+      type: object
+      properties:
+        venue: { $ref: "#/components/schemas/Venue" }
+        categories:
+          type: array
+          items: { $ref: "#/components/schemas/Category" }
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/MenuItem" }
+
+    CreateOrderItem:
+      type: object
+      required: [menuItemId, quantity]
+      properties:
+        menuItemId: { type: string, format: uuid, x-go-type: string }
+        quantity: { type: integer, minimum: 1 }
+
+    CreateOrderRequest:
+      type: object
+      required: [venueId, customerRef, items]
+      properties:
+        venueId: { type: string, format: uuid, x-go-type: string }
+        customerRef: { type: string }
+        items:
+          type: array
+          minItems: 1
+          items: { $ref: "#/components/schemas/CreateOrderItem" }
+
+    OrderItem:
+      type: object
+      properties:
+        menuItemId: { type: string, format: uuid, x-go-type: string }
+        name: { type: string }
+        priceKopecks: { type: integer, format: int64 }
+        quantity: { type: integer }
+
+    Order:
+      type: object
+      properties:
+        id: { type: string, format: uuid, x-go-type: string }
+        venueId: { type: string, format: uuid, x-go-type: string }
+        status:
+          type: string
+          enum: [CREATED, ACCEPTED, COOKING, READY, DELIVERING, COMPLETED, CANCELLED]
+        totalKopecks: { type: integer, format: int64 }
+        currency: { type: string }
+        customerRef: { type: string }
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/OrderItem" }
+        createdAt: { type: string, format: date-time }
